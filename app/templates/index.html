@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Upload & Scan ARM Template - Azure Security Analyzer{% endblock %}
+
+{% block content %}
+<div class="upload-hero-container">
+  <div class="hero-header">
+    <div class="hero-badge-pill">
+      <span>🛡️ Pre-Deployment IaC Security</span>
+    </div>
+    <h1 class="hero-title">Azure Infrastructure Security & Topology Visualizer</h1>
+    <p class="hero-subtitle">
+      Inspect Azure Resource Manager (ARM) JSON templates to map dependency topologies, identify network exposures, and detect security misconfigurations before deployment.
+    </p>
+  </div>
+
+  <div class="upload-grid">
+    <!-- Left Column: Upload Card -->
+    <div class="card upload-card">
+      <div class="card-header">
+        <h2><span>📤</span> Upload ARM Template</h2>
+      </div>
+      <div class="card-body">
+        <form action="{{ url_for('upload.upload_file') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon-wrapper">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <p class="drop-prompt">Drag & drop your Azure ARM template here</p>
+            <p class="drop-subtext">Supports valid Azure Resource Manager JSON documents</p>
+            
+            <label for="template_file" class="custom-browse-btn">Browse Local Files</label>
+            <input type="file" id="template_file" name="template_file" accept=".json" class="file-input-hidden" style="display: none;" required>
+            
+            <div id="selectedFileChip" class="selected-file-chip hidden">
+              <div class="chip-details">
+                <span>📄</span>
+                <span class="chip-name" id="selectedFileName"></span>
+                <span class="chip-size" id="selectedFileSize"></span>
+              </div>
+              <button type="button" class="chip-remove-btn" id="btnRemoveFile" title="Remove selected file">&times;</button>
+            </div>
+          </div>
+
+          <div class="upload-actions">
+            <button type="submit" class="btn btn-cyan btn-block" id="submitBtn">
+              <span>🔍</span> Analyze Infrastructure & Security
+            </button>
+          </div>
+        </form>
+
+        <div class="validation-checklist">
+          <div class="checklist-title">Verification Checklist</div>
+          <ul class="checklist-items">
+            <li class="checklist-item">
+              <span class="check-icon">&#10003;</span> Standard JSON document up to 10 MB
+            </li>
+            <li class="checklist-item">
+              <span class="check-icon">&#10003;</span> Recognized Azure Resource Manager <code>$schema</code>
+            </li>
+            <li class="checklist-item">
+              <span class="check-icon">&#10003;</span> Valid <code>resources</code> array and property definitions
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Quickstart Scenarios Card -->
+    <div class="card samples-card">
+      <div class="card-header">
+        <h2><span>⚡</span> Quickstart Demos</h2>
+        <span class="brand-badge">Instant Load</span>
+      </div>
+      <div class="card-body">
+        <p class="samples-desc">
+          Test the visualizer and audit engine immediately with pre-packaged reference architectures:
+        </p>
+
+        <div class="sample-cards-list">
+          <!-- Insecure Scenario -->
+          <div class="sample-scenario-card">
+            <div class="scenario-header">
+              <span class="scenario-title">Insecure Vulnerable Architecture</span>
+              <span class="scenario-badge badge-risk-high">12 Violations</span>
+            </div>
+            <p class="scenario-desc">
+              Demonstrates open SSH/RDP ports, public blob storage, unencrypted transport, and wildcard custom RBAC roles.
+            </p>
+            <button class="btn btn-sm btn-danger" onclick="loadSample('insecure')">
+              <span>⚠️</span> Launch Insecure Demo
+            </button>
+          </div>
+
+          <!-- Hardened Secure Scenario -->
+          <div class="sample-scenario-card">
+            <div class="scenario-header">
+              <span class="scenario-title">Hardened Secure Architecture</span>
+              <span class="scenario-badge badge-compliant">Zero Violations</span>
+            </div>
+            <p class="scenario-desc">
+              Hardened baseline featuring restricted NSG rules, private storage, TLS 1.2, App Service HTTPS, and Key Vault diagnostics.
+            </p>
+            <button class="btn btn-sm btn-success" onclick="loadSample('secure')">
+              <span>🛡️</span> Launch Secure Demo
+            </button>
+          </div>
+
+          <!-- Complex Scenario -->
+          <div class="sample-scenario-card">
+            <div class="scenario-header">
+              <span class="scenario-title">Complex Parameterized Deployment</span>
+              <span class="scenario-badge badge-complex">Multi-Tier</span>
+            </div>
+            <p class="scenario-desc">
+              Multi-tier network evaluating ARM expressions (<code>concat</code>, <code>format</code>), variables, and nested subnets.
+            </p>
+            <button class="btn btn-sm btn-indigo" onclick="loadSample('complex')">
+              <span>🌐</span> Launch Complex Demo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('template_file');
+  const selectedChip = document.getElementById('selectedFileChip');
+  const nameLabel = document.getElementById('selectedFileName');
+  const sizeLabel = document.getElementById('selectedFileSize');
+  const removeBtn = document.getElementById('btnRemoveFile');
+
+  // Drag and drop visual cues
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-active');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-active');
+    }, false);
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length) {
+      fileInput.files = files;
+      showSelectedFile(files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) {
+      showSelectedFile(fileInput.files[0]);
+    }
+  });
+
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fileInput.value = '';
+      selectedChip.classList.add('hidden');
+    });
+  }
+
+  function showSelectedFile(file) {
+    nameLabel.textContent = file.name;
+    sizeLabel.textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+    selectedChip.classList.remove('hidden');
+  }
+
+  function loadSample(sampleName) {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "<span>⏳</span> Loading...";
+    btn.disabled = true;
+
+    fetch(`/api/load-sample/${sampleName}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.redirect_url) {
+          window.location.href = data.redirect_url;
+        } else {
+          alert("Error loading sample: " + (data.error || "Unknown error"));
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      })
+      .catch(err => {
+        alert("Network error loading sample: " + err);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      });
+  }
+</script>
+{% endblock %}

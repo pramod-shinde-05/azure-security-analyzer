@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Dashboard - {{ filename }} - Azure Security Analyzer{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+  <!-- Metrics Header -->
+  <div class="metrics-row">
+    <div class="metric-card">
+      <span class="metric-label">Scanned File</span>
+      <span class="metric-value file-tag" title="{{ filename }}">{{ filename }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Azure Resources</span>
+      <span class="metric-value">{{ summary.total_resources }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Dependencies / Edges</span>
+      <span class="metric-value">{{ summary.total_relationships }}</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Findings / Unique Rules</span>
+      <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+        <span class="metric-value {% if summary.total_findings > 0 %}text-danger{% else %}text-success{% endif %}">
+          {{ summary.total_findings }}
+        </span>
+        <span style="font-size: 0.82rem; color: #94a3b8; font-weight: 600;">
+          ({{ summary.unique_rules_count }} unique rules)
+        </span>
+      </div>
+    </div>
+    <div class="metric-card severity-pills-card">
+      <span class="metric-label">Severity Breakdown</span>
+      <div class="severity-pills">
+        <span class="pill pill-critical">Crit: {{ summary.severity_counts.CRITICAL }}</span>
+        <span class="pill pill-high">High: {{ summary.severity_counts.HIGH }}</span>
+        <span class="pill pill-medium">Med: {{ summary.severity_counts.MEDIUM }}</span>
+        <span class="pill pill-low">Low: {{ summary.severity_counts.LOW }}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if summary.warnings %}
+  <div class="analysis-warnings-banner">
+    <span class="warning-tag">⚠️ Analysis Limitations ({{ summary.warnings|length }}):</span>
+    <span class="warning-text">{{ summary.warnings[0] }}{% if summary.warnings|length > 1 %} (+{{ summary.warnings|length - 1 }} more){% endif %}</span>
+  </div>
+  {% endif %}
+
+  <!-- Main Dual Pane Workspace -->
+  <div class="workspace-grid">
+    <!-- Left Pane: Cytoscape Graph -->
+    <div class="card graph-pane">
+      <div class="pane-header">
+        <div class="pane-title">
+          <span>Topology Visualizer</span>
+          <span class="badge badge-subtle" id="graphStatsBadge">Nodes: {{ summary.total_resources }}</span>
+        </div>
+        <div class="graph-toolbar">
+          <button class="btn btn-icon" id="btnZoomIn" title="Zoom In">+</button>
+          <button class="btn btn-icon" id="btnZoomOut" title="Zoom Out">&minus;</button>
+          <button class="btn btn-icon" id="btnFit" title="Fit to View (Reset Zoom)">&#x26F6;</button>
+          <button class="btn btn-icon" id="btnToggleExpand" title="Expand Visualizer (Hide Audit Panel)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+            </svg>
+          </button>
+          <button class="btn-traffic-pill active" id="btnToggleTraffic" title="Live Wire Traffic (Click to Pause/Resume)">
+            <span class="traffic-pulse-dot"></span>
+            <span class="traffic-label">Live Traffic</span>
+          </button>
+          <select id="selectLayout" class="form-select-sm" title="Change Layout View">
+            <option value="dagre" selected>Architecture Flow (Default)</option>
+            <option value="cose">Network Clusters</option>
+            <option value="breadthfirst">Dependency Tree</option>
+            <option value="grid">Grid View</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Graph Filter Bar -->
+      <div class="graph-filter-bar">
+        <input type="text" id="nodeSearchInput" class="search-input-sm" placeholder="Filter nodes by name or type...">
+        <div class="filter-pills-group" id="riskFilterGroup">
+          <button class="filter-pill active" data-risk="ALL">All</button>
+          <button class="filter-pill" data-risk="CRITICAL">Critical</button>
+          <button class="filter-pill" data-risk="HIGH">High</button>
+          <button class="filter-pill" data-risk="MEDIUM">Medium</button>
+          <button class="filter-pill" data-risk="CLEAN">Clean</button>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div id="cy" class="cy-canvas"></div>
+
+      <!-- Graph Legend -->
+      <div class="graph-legend">
+        <span class="legend-item"><span class="legend-live-pulse"></span> <strong>Live Traffic Flow</strong></span>
+        <span class="legend-sep">&bull;</span>
+        <span class="legend-item"><span class="legend-color dot-critical"></span> Critical</span>
+        <span class="legend-item"><span class="legend-color dot-high"></span> High</span>
+        <span class="legend-item"><span class="legend-color dot-medium"></span> Medium</span>
+        <span class="legend-item"><span class="legend-color dot-clean"></span> Clean</span>
+        <span class="legend-sep">&bull;</span>
+        <span class="legend-item"><span class="legend-edge edge-exp"></span> Ingress / Public IP</span>
+        <span class="legend-item"><span class="legend-edge edge-net"></span> Network</span>
+        <span class="legend-item"><span class="legend-edge edge-flow"></span> Data Flow</span>
+        <span class="legend-item"><span class="legend-edge edge-int"></span> Secrets</span>
+        <span class="legend-item"><span class="legend-edge edge-sec"></span> NSG Boundary</span>
+        <span class="legend-item"><span class="legend-edge edge-auth"></span> Role / Auth</span>
+        <span class="legend-item"><span class="legend-edge edge-dep"></span> Dependency</span>
+      </div>
+    </div>
+
+    <!-- Right Pane: Dual-Mode Workspace (Audit Findings & AI Attack Paths) -->
+    <div class="card findings-pane">
+      <div class="pane-header">
+        <div class="pane-tabs-group" id="rightPaneTabs">
+          <button class="pane-tab-btn active" id="tabAuditFindings" data-pane="audit">
+            <span>🛡️ Findings</span>
+            <span class="badge badge-danger" id="findingsCountBadge">{{ summary.total_findings }}</span>
+          </button>
+          <button class="pane-tab-btn" id="tabAiThreats" data-pane="threats">
+            <span>⚡ Attack Paths</span>
+            <span class="badge badge-ai-pulse" id="aiThreatCountBadge">AI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- View 1: Deterministic Findings -->
+      <div id="viewAuditFindings" class="pane-view-content">
+        <div class="sub-filter-bar">
+          <div class="findings-filter-tabs" id="findingsTabs">
+            <button class="tab-btn active" data-tab="ALL">All</button>
+            <button class="tab-btn" data-tab="CRITICAL">Critical</button>
+            <button class="tab-btn" data-tab="HIGH">High</button>
+            <button class="tab-btn" data-tab="MEDIUM">Med</button>
+            <button class="tab-btn" data-tab="LOW">Low</button>
+          </div>
+        </div>
+        <div class="findings-list" id="findingsListContainer">
+          <!-- Rendered dynamically by findings.js -->
+        </div>
+      </div>
+
+      <!-- View 2: AI Attack-Path Analysis -->
+      <div id="viewAiThreats" class="pane-view-content hidden">
+        <div class="ai-threats-toolbar">
+          <button class="btn btn-sm btn-cyan" id="btnRunThreatModel">
+            <span>⚡</span> Run AI Threat Modeling
+          </button>
+          <button class="btn btn-sm btn-outline-cyan hidden" id="btnClearAttackPath">
+            <span>✕</span> Reset Highlighting
+          </button>
+        </div>
+        <div class="ai-threats-container" id="aiThreatsListContainer">
+          <!-- Rendered dynamically by ai_dashboard.js -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Drawer: Resource Property Inspector -->
+  <div class="card inspector-drawer" id="resourceInspector">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span class="drawer-icon">📦</span>
+        <span id="inspectResourceName">Select a node in the graph to inspect configuration</span>
+      </div>
+      <div class="drawer-controls">
+        <span class="badge" id="inspectResourceRisk"></span>
+        <button class="btn btn-sm btn-icon" id="btnCloseInspector">&times;</button>
+      </div>
+    </div>
+    <div class="drawer-body hidden" id="inspectorBody">
+      <div class="inspector-meta-grid">
+        <div><strong>Type:</strong> <span id="inspectResourceType"></span></div>
+        <div><strong>Location:</strong> <span id="inspectResourceLocation"></span></div>
+        <div><strong>API Version:</strong> <span id="inspectResourceApiVersion"></span></div>
+        <div><strong>JSON Path:</strong> <code id="inspectResourcePath"></code></div>
+      </div>
+      <div class="inspector-json-section">
+        <strong>Properties:</strong>
+        <pre><code id="inspectResourcePropertiesJson"></code></pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="initialData" type="application/json">
+{{ initial_data_json|safe }}
+</script>
+<script>
+  window.FILE_ID = "{{ file_id }}";
+  try {
+    window.INITIAL_DATA = JSON.parse(document.getElementById('initialData').textContent);
+  } catch(e) {
+    console.error("Error parsing initial data:", e);
+    window.INITIAL_DATA = {};
+  }
+</script>
+<script src="{{ url_for('static', filename='js/graph.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/findings.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/ai_dashboard.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=9"></script>
+{% endblock %}
+

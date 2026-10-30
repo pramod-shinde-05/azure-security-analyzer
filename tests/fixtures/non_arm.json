@@ -1,0 +1,9 @@
+{
+  "name": "not-an-arm-template",
+  "version": "1.0.0",
+  "description": "Standard configuration package without Azure schema or resources",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
+

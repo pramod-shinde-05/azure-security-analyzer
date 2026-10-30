@@ -1,0 +1,12 @@
+# Core Web Framework
+Flask>=2.3.0
+Werkzeug>=2.3.0
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.3.0
+
+# HTTP & AI Providers
+requests>=2.28.0
+google-genai>=0.1.1
+

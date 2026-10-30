@@ -1,0 +1,167 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus"
+    },
+    "corpIpCidr": {
+      "type": "string",
+      "defaultValue": "198.51.100.0/24"
+    }
+  },
+  "variables": {
+    "nsgName": "sec-nsg-prod",
+    "vnetName": "sec-vnet-prod",
+    "storageName": "secstoreprod9823",
+    "appServiceName": "sec-app-prod"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2021-05-01",
+      "name": "[variables('nsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowCorpSSHOnly",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "[parameters('corpIpCidr')]",
+              "destinationPortRange": "22",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "DenyAllInboundDefault",
+            "properties": {
+              "priority": 4096,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourceAddressPrefix": "*",
+              "destinationPortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2021-05-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "defaultSubnet",
+            "properties": {
+              "addressPrefix": "10.0.1.0/24",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-08-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_GRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2",
+        "publicNetworkAccess": "Disabled",
+        "encryption": {
+          "requireInfrastructureEncryption": true,
+          "services": {
+            "blob": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-03-01",
+      "name": "[variables('appServiceName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "httpsOnly": true,
+        "siteConfig": {
+          "remoteDebuggingEnabled": false,
+          "ftpsState": "FtpsOnly",
+          "minTlsVersion": "1.2",
+          "cors": {
+            "allowedOrigins": [
+              "https://corp.contoso.com"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2021-10-01",
+      "name": "sec-kv-prod",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "enableSoftDelete": true,
+        "enablePurgeProtection": true
+      }
+    },
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "name": "kv-diag-settings",
+      "properties": {
+        "workspaceId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/la-workspace"
+      },
+      "dependsOn": [
+        "providers/Microsoft.KeyVault/vaults/sec-kv-prod"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "name": "nsg-diag-settings",
+      "properties": {
+        "workspaceId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.OperationalInsights/workspaces/la-workspace"
+      },
+      "dependsOn": [
+        "providers/Microsoft.Network/networkSecurityGroups/sec-nsg-prod"
+      ]
+    }
+  ]
+}
+

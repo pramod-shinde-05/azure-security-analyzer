@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Azure ARM Security Analyzer & Visualizer{% endblock %}</title>
+  
+  <!-- Critical Base Styles for immediate layout and dark theme -->
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: #121826;
+      --bg-subtle: #1c263b;
+      --border-color: #243147;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --sev-critical: #ef4444;
+      --sev-clean: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: var(--text-main); text-decoration: none; }
+    .navbar {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      color: var(--text-main);
+      font-size: 1.1rem;
+    }
+    .brand-icon { font-size: 1.4rem; }
+    .brand-title { font-weight: 700; }
+    .brand-badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      background-color: rgba(56, 189, 248, 0.12);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .nav-links { display: flex; align-items: center; gap: 0.75rem; }
+    .nav-link {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+    }
+  </style>
+
+  <!-- External Full Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+
+  <!-- Cytoscape.js and Dagre layout libraries (using cdn.jsdelivr.net / unpkg.com compliant with CSP) -->
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script>
+    if (typeof cytoscape === 'undefined') {
+      document.write('<script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"><\/script>');
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="{{ url_for('main.index') }}" class="brand">
+        <span class="brand-icon">🛡️</span>
+        <span class="brand-title">Azure ARM <strong>Security Analyzer</strong></span>
+        <span class="brand-badge">v1.0 &bull; Offline Engine</span>
+      </a>
+      <nav class="nav-links">
+        <a href="{{ url_for('main.index') }}" class="nav-link">Upload Template</a>
+        {% if file_id %}
+        <a href="{{ url_for('analysis.view_analysis', file_id=file_id) }}" class="nav-link active">Dashboard</a>
+        <a href="{{ url_for('analysis.export_report', file_id=file_id) }}" class="btn btn-outline-cyan btn-sm">Export Report (JSON)</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-alert flash-{{ category }}">
+              <span class="flash-icon">⚠️</span>
+              <span class="flash-msg">{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="footer-container">
+      <p>Azure Infrastructure-as-Code Security & Topology Visualizer &bull; Independent Engine</p>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,236 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2021-05-01",
+      "name": "insecure-nsg",
+      "location": "eastus",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowOpenSSH",
+            "properties": {
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "0.0.0.0/0",
+              "destinationPortRange": "22",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowOpenRDP",
+            "properties": {
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "*",
+              "destinationPortRange": "3389",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowOpenHTTP",
+            "properties": {
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "0.0.0.0/0",
+              "destinationPortRange": "80",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "AllowAllInbound",
+            "properties": {
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "*",
+              "sourceAddressPrefix": "*",
+              "destinationPortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2021-05-01",
+      "name": "insecure-pip",
+      "location": "eastus",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2021-05-01",
+      "name": "insecure-nic",
+      "location": "eastus",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'insecure-pip')]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', 'insecure-pip')]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', 'insecure-nsg')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-08-01",
+      "name": "insecurestorage9823",
+      "location": "eastus",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": true,
+        "supportsHttpsTrafficOnly": false,
+        "minimumTlsVersion": "TLS1_0",
+        "publicNetworkAccess": "Enabled",
+        "encryption": {
+          "requireInfrastructureEncryption": false
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-03-01",
+      "name": "insecure-webapp",
+      "location": "eastus",
+      "properties": {
+        "httpsOnly": false,
+        "siteConfig": {
+          "remoteDebuggingEnabled": true,
+          "ftpsState": "AllAllowed",
+          "minTlsVersion": "1.0",
+          "cors": {
+            "allowedOrigins": [
+              "*"
+            ]
+          },
+          "appSettings": [
+            {
+              "name": "STORAGE_CONNECTION_STRING",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=insecurestorage9823;AccountKey=fakeSecretKey')]"
+            },
+            {
+              "name": "REDIS_CACHE_URL",
+              "value": "insecure-redis.redis.cache.windows.net:6379,ssl=False"
+            },
+            {
+              "name": "KEYVAULT_SECRET_REF",
+              "value": "@Microsoft.KeyVault(VaultName=insecure-vault-no-diag;SecretName=AppSecret)"
+            }
+          ],
+          "connectionStrings": [
+            {
+              "name": "SqlDatabaseConnection",
+              "connectionString": "Server=tcp:insecure-sql-server.database.windows.net,1433;Initial Catalog=insecure-db;Encrypt=False"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', 'insecure-nic')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', 'insecurestorage9823')]",
+        "[resourceId('Microsoft.Cache/Redis', 'insecure-redis')]",
+        "[resourceId('Microsoft.KeyVault/vaults', 'insecure-vault-no-diag')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases/transparentDataEncryption",
+      "apiVersion": "2021-05-01-preview",
+      "name": "insecure-sql-server/insecure-db/current",
+      "properties": {
+        "status": "Disabled"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "bad-subscription-role-assign",
+      "properties": {
+        "roleDefinitionId": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+        "principalId": "11111111-1111-1111-1111-111111111111",
+        "scope": "/"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Authorization/roleDefinitions', 'overly-permissive-custom-role')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleDefinitions",
+      "apiVersion": "2018-07-01",
+      "name": "overly-permissive-custom-role",
+      "properties": {
+        "roleName": "SuperAdminWildcard",
+        "permissions": [
+          {
+            "actions": [
+              "*"
+            ],
+            "notActions": []
+          }
+        ],
+        "assignableScopes": [
+          "/"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2021-10-01",
+      "name": "insecure-vault-no-diag",
+      "location": "eastus",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "enableSoftDelete": false,
+        "enablePurgeProtection": false
+      }
+    },
+    {
+      "type": "Microsoft.Cache/Redis",
+      "apiVersion": "2021-06-01",
+      "name": "insecure-redis",
+      "location": "eastus",
+      "properties": {
+        "sku": {
+          "name": "Basic",
+          "family": "C",
+          "capacity": 1
+        },
+        "enableNonSslPort": true
+      }
+    },
+    {
+      "type": "Microsoft.Automation/automationAccounts/variables",
+      "apiVersion": "2020-01-13-preview",
+      "name": "insecure-auto/secret-token",
+      "properties": {
+        "value": "\"supersecret\"",
+        "isEncrypted": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', 'insecure-vault-no-diag')]"
+      ]
+    }
+  ]
+}
