@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="200" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="azureGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0078D4" />
+      <stop offset="100%" stop-color="#003A66" />
+    </linearGradient>
+    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0078D4" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Left: Security Shield & Topology Emblem -->
+  <g transform="translate(40, 20)">
+    <!-- Outer Shield Shadow & Base -->
+    <path d="M80 10 L140 32 C140 105 80 148 80 148 C80 148 20 105 20 32 Z" 
+          fill="url(#azureGrad)" filter="url(#glow)"/>
+    
+    <!-- Inner Accent Border -->
+    <path d="M80 18 L132 37 C132 98 80 136 80 136 C80 136 28 98 28 37 Z" 
+          fill="none" stroke="#38BDF8" stroke-width="2.5" opacity="0.6"/>
+
+    <!-- Cloud / Topology Network Graphic -->
+    <!-- Network Nodes -->
+    <circle cx="80" cy="55" r="7" fill="#FFFFFF"/>
+    <circle cx="54" cy="85" r="5.5" fill="#38BDF8"/>
+    <circle cx="106" cy="85" r="5.5" fill="#38BDF8"/>
+    <circle cx="80" cy="112" r="5" fill="#10B981"/>
+
+    <!-- Connecting Edges -->
+    <line x1="80" y1="55" x2="54" y2="85" stroke="#FFFFFF" stroke-width="2" opacity="0.8"/>
+    <line x1="80" y1="55" x2="106" y2="85" stroke="#FFFFFF" stroke-width="2" opacity="0.8"/>
+    <line x1="54" y1="85" x2="80" y2="112" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <line x1="106" y1="85" x2="80" y2="112" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="3,2"/>
+    
+    <!-- Center Security Node Core -->
+    <circle cx="80" cy="82" r="9" fill="#0F172A" stroke="#38BDF8" stroke-width="2"/>
+    <circle cx="80" cy="82" r="3.5" fill="#38BDF8"/>
+  </g>
+
+  <!-- Right: Typography -->
+  <g transform="translate(210, 85)">
+    <!-- Main Title -->
+    <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+          font-size="44" font-weight="800" fill="#0078D4" letter-spacing="-0.5px">
+      ARM <tspan fill="#0F172A">SECURITY ANALYZER</tspan>
+    </text>
+    
+    <!-- Subtitle / Tagline -->
+    <text y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+          font-size="16" font-weight="500" fill="#475569" letter-spacing="0.2px">
+      Enterprise Azure IaC Static Security Auditing, Topology Graphing &amp; AI Threat Intelligence
+    </text>
+
+    <!-- Version & Mode Badges -->
+    <g transform="translate(0, 56)">
+      <rect x="0" y="0" width="76" height="20" rx="4" fill="#0078D4"/>
+      <text x="38" y="14" font-family="monospace" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">v2.0 SAAS</text>
+
+      <rect x="84" y="0" width="102" height="20" rx="4" fill="#E0F2FE"/>
+      <text x="135" y="14" font-family="sans-serif" font-size="11" font-weight="600" fill="#0369A1" text-anchor="middle">100% OFFLINE</text>
+
+      <rect x="194" y="0" width="115" height="20" rx="4" fill="#F0FDF4"/>
+      <text x="251.5" y="14" font-family="sans-serif" font-size="11" font-weight="600" fill="#15803D" text-anchor="middle">AI AUTO-FIX</text>
+    </g>
+  </g>
+</svg>

@@ -1,114 +1,173 @@
-# Azure ARM Security Analyzer & Visualizer
+<p align="center">
+  <img src="images/arm-banner.png" alt="ARM Security Analyzer Banner" width="100%" />
+</p>
 
-A standalone Python Flask web application that allows users to upload Azure Resource Manager (ARM) JSON templates, interactively visualize the provisioned Azure cloud infrastructure topology, and perform deterministic static security analysis to identify misconfigurations before deployment.
+<p align="center">
+  <strong>Enterprise Pre-Deployment Security Auditing, Infrastructure Topology Visualization &amp; AI-Powered Threat Intelligence for Azure Resource Manager (ARM) Templates</strong>
+</p>
 
----
-
-## 1. Project Overview
-
-- **Location**: `E:\AzureProject\v1\azure-security-analyzer`
-- **Application Type**: Independent Python Flask Web Application + Cytoscape.js & Native SVG Frontend
-- **Target File Formats**: Azure Resource Manager (ARM) JSON Templates (`.json`)
-- **Key Concepts Synthesized**:
-  - **Topology Mapping**: Inspired by [AzureResourceVisualizer](https://github.com/ytechie/AzureResourceVisualizer) (dependency graphs, network associations, category mapping, Azure-style node representations).
-  - **Security Auditing**: Inspired by Microsoft's [Template Analyzer](https://github.com/Azure/template-analyzer) (deterministic rule scanning, severity ratings, prescriptive remediation, comprehensive coverage).
-
-> **Note on Independence**: This application is completely standalone. It does not import, invoke, or depend on any binaries, scripts, packages, or build artifacts from either reference repository.
-
----
-
-## 2. Key Features
-
-- **ARM Template Ingestion & Validation**:
-  - Strict JSON syntax and Azure ARM schema validation.
-  - Safe file handling with collision-free UUID4 identifiers, directory traversal guards, and file size limits (10 MB).
-  - Distinguishes between syntax errors, non-ARM JSON structures, and valid templates with analysis warnings.
-- **Safe ARM Expression Resolver (No Python `eval()`)**:
-  - Safely evaluates `parameters('paramName')` (using default values).
-  - Evaluates `variables('varName')` with chained dependency resolution.
-  - Recursively resolves `concat(...)`, `format('{0}-{1}', ...)`, `if(...)`, `equals(...)`, and `resourceId(...)`.
-  - Gracefully retains runtime/complex functions (e.g. `reference()`, `listKeys()`) as symbolic placeholders without crashing or producing false positives.
-- **Dynamic Graph Layout Selector**:
-  - **Tiered Architecture (Default)**: Organizes cloud resources cleanly into logical architectural tiers (Network Ingress & Connectivity $\to$ Compute Workloads $\to$ Backend Data & Storage $\to$ Security & Governance) with balanced multi-column row wrapping.
-  - **Connected Clusters**: Physics-based force-directed organic layout clustering resources naturally by their direct topological connections.
-  - **Dependency Tree**: Level-ordered hierarchical tree arrangement reflecting deployment and downstream dependencies.
-  - **Grid View**: Compact, evenly spaced card matrix for rapid resource inventory inspection.
-  - **Fit View Control (`⛶`)**: Instantly auto-fits and centers the entire graph within the container canvas.
-  - **Expand / Focus Mode (`⛶`)**: Toggles the canvas to full workspace width by collapsing the findings panel.
-  - **Live Wire Traffic Flow (`⚡ Live Traffic`)**: Dynamic animated dashed energy flow showing real-time ingress traffic (Public IP to NIC/App in neon orange) and outgoing data flows (App to Storage, Redis, Database, and Key Vault in emerald green/cyan/purple), with toggleable pause/resume.
-- **Azure Infrastructure Visualization**:
-  - **Azure-Style Resource Cards**: Generous 230px × 76px cards with official Azure service vector SVG icons (Virtual Machines, VNets, Subnets, NSGs, NICs, Public IPs, Storage Accounts, Key Vaults, Web Apps, SQL Databases, Load Balancers, Application Gateways, Managed Identities, Roles, Automation, Redis, and more).
-  - **Visually Differentiated Edges**: Solid and dashed color-coded connections representing deployment dependencies (slate dashed), network links (cyan solid), public IP exposure (orange solid), data flows (emerald green dashed), Key Vault secrets (violet dashed), NSG boundaries (purple dashed), authorization bindings (yellow dotted), app hosting (teal solid), and monitoring destinations (emerald dashed).
-  - **Dual Engine Architecture**: Cytoscape.js engine with an automatic, 100% offline Native SVG Topology Visualizer fallback featuring hardware-accelerated animated photon/data packet particles (`<animateMotion>`).
-- **Deterministic Security Rule Engine (23 Unique Rules)**:
-  - Evaluates 23 unique deterministic security rules spanning Network Security, Storage Security, App Service, Identity & RBAC, Encryption, Secrets, and Logging.
-  - Each finding provides severity, category, affected resource, JSON path, evidence snippet, attack impact, and concrete remediation steps.
-  - **Separate Metric Reporting**: Uniquely counted rule IDs are tracked and reported separately from total finding instances.
-- **Bidirectional Interactivity**:
-  - Clicking a finding in the audit list instantly centers, pulses, and highlights the affected node in the topology canvas.
-  - Clicking a node opens the Resource Inspector showing configuration properties, risk level, associated findings, and topological links.
-- **Exportable Security Reports**:
-  - One-click export of the complete security audit report in standard structured JSON format.
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-0078D4?logo=python&logoColor=white" alt="Python Version" /></a>
+  <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Framework-Flask%203.x-004578?logo=flask&logoColor=white" alt="Flask Framework" /></a>
+  <a href="https://learn.microsoft.com/azure/azure-resource-manager/"><img src="https://img.shields.io/badge/Target-Azure%20ARM%20JSON-0078D4?logo=microsoftazure&logoColor=white" alt="Azure ARM" /></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/Tests-77%20Passed%20(100%25)-107C41?logo=pytest&logoColor=white" alt="Test Status" /></a>
+  <a href="#-ai-intelligence-layer"><img src="https://img.shields.io/badge/AI%20Providers-Google%20Gemini%20%7C%20Local%20Ollama-7738DC?logo=google&logoColor=white" alt="AI Providers" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-gray" alt="License" /></a>
+</p>
 
 ---
 
-## 3. Implemented Security Rules Catalog (23 Unique Rules)
+## 📋 Table of Contents
 
-| Rule ID | Severity | Category | Rule Title & Purpose | Reference Mapping |
-| :--- | :--- | :--- | :--- | :--- |
-| **`SEC-NET-001`** | **HIGH** | Network Security | **Unrestricted Inbound SSH Access (Port 22)**: Flags NSG rules allowing port 22 from `*` or `0.0.0.0/0`. | Baseline |
-| **`SEC-NET-002`** | **HIGH** | Network Security | **Unrestricted Inbound RDP Access (Port 3389)**: Flags NSG rules allowing port 3389 from `*` or `0.0.0.0/0`. | Baseline |
-| **`SEC-NET-003`** | **CRITICAL** | Network Security | **Unrestricted Inbound on All Ports (*)**: Flags NSG rules permitting all protocols/ports from any source. | Baseline |
-| **`SEC-NET-004`** | **HIGH** | Network Exposure | **Public IP Assigned Without NSG**: Flags NICs with Public IPs that lack Network Security Group protection. | Baseline |
-| **`SEC-NET-005`** | **MEDIUM** | Network Security | **Unrestricted Inbound HTTP Access (Port 80)**: Flags NSG rules allowing cleartext HTTP from internet sources. | Baseline |
-| **`SEC-STO-001`** | **HIGH** | Storage Security | **Public Blob Access Allowed**: Flags storage accounts where `allowBlobPublicAccess` is enabled. | Baseline |
-| **`SEC-STO-002`** | **HIGH** | Storage Security | **Insecure HTTP Allowed**: Flags storage accounts where `supportsHttpsTrafficOnly` is disabled. | Baseline |
-| **`SEC-STO-003`** | **MEDIUM** | Storage Security | **Storage Weak TLS Version**: Flags storage accounts with minimum TLS version omitted or below `TLS1_2`. | Baseline |
-| **`SEC-STO-004`** | **LOW** | Storage Security | **Public Network Access Enabled**: Flags storage accounts accessible from all public networks. | Baseline |
-| **`SEC-APP-001`** | **HIGH** | App Service | **Remote Debugging Enabled**: Flags Web, API, and Function apps with remote debugging enabled. | `TA-000002`, `000008`, `000014` |
-| **`SEC-APP-002`** | **HIGH** | App Service | **FTPS Enforcement Disabled**: Flags App Services where `ftpsState` allows cleartext FTP. | `TA-000003`, `000009`, `000015` |
-| **`SEC-APP-003`** | **HIGH** | App Service | **Minimum TLS Version Below 1.2**: Flags App Services allowing legacy TLS 1.0 or 1.1. | `TA-000005`, `000011`, `000017` |
-| **`SEC-APP-004`** | **MEDIUM** | App Service | **CORS Allows Wildcard All Origins (*)**: Flags App Services with wildcard `*` allowed origins. | `TA-000006`, `000012`, `000018` |
-| **`SEC-APP-005`** | **LOW** | Identity & Access | **Managed Identity Disabled**: Flags App Services that lack a configured Managed Identity. | `TA-000007`, `000013`, `000019` |
-| **`SEC-KV-001`** | **HIGH** | Security & Secrets | **Key Vault Soft Delete / Purge Protection Disabled**: Flags Key Vaults lacking deletion protection. | Baseline |
-| **`SEC-ID-001`** | **HIGH** | Identity & Access | **Subscription-Scope Owner/Contributor**: Flags role assignments granting privileged roles at root scope. | Baseline |
-| **`SEC-ID-002`** | **HIGH** | Identity & Access | **Custom Role Wildcard Actions (*)**: Flags custom role definitions containing wildcard `"*"` permissions. | `TA-000020` |
-| **`SEC-ENC-001`** | **MEDIUM** | Encryption & Transit | **App Service HTTPS Disabled**: Flags web apps where `httpsOnly` is false or unset. | `TA-000004`, `000010`, `000016` |
-| **`SEC-ENC-002`** | **HIGH** | Encryption & Transit | **SQL Database TDE Disabled**: Flags Azure SQL databases with Transparent Data Encryption disabled. | `TA-000027` |
-| **`SEC-ENC-003`** | **LOW** | Encryption & Transit | **Storage Infrastructure Encryption Disabled**: Flags storage accounts lacking secondary encryption. | Baseline |
-| **`SEC-AUT-001`** | **HIGH** | Encryption & Secrets | **Automation Variable Asset Unencrypted**: Flags Automation variables created without encryption. | `TA-000021` |
-| **`SEC-REDIS-001`**| **HIGH** | Encryption & Transit | **Redis Non-SSL Port Enabled**: Flags Azure Cache for Redis instances with cleartext port 6379 enabled. | `TA-000022` |
-| **`SEC-LOG-001`** | **LOW** | Logging & Monitoring | **Missing Diagnostic Settings**: Flags Key Vaults / NSGs deployed without accompanying diagnosticSettings. | `TA-000001` |
-
-> For a complete comparison against all 38 rules from Microsoft's Template Analyzer catalog, see [`docs/security-rule-coverage.md`](docs/security-rule-coverage.md).
+1. [Project Overview](#-project-overview)
+2. [Application Visual Tour & Screenshots](#-application-visual-tour--screenshots)
+3. [Key Capabilities & Features](#-key-capabilities--features)
+4. [System Architecture](#-system-architecture)
+5. [Prerequisites & System Requirements](#-prerequisites--system-requirements)
+6. [Installation & Setup](#-installation--setup)
+7. [Settings & Configuration Guide (.env)](#-settings--configuration-guide-env)
+8. [Running the Application](#-running-the-application)
+9. [AI Provider Setup & Switching Guide](#-ai-provider-setup--switching-guide)
+   - [Option A: Google Gemini API (Cloud)](#option-a-google-gemini-api-cloud)
+   - [Option B: Ollama (100% Local / Private / Air-Gapped)](#option-b-ollama-100-local--private--air-gapped)
+10. [Automated Test Suite](#-automated-test-suite)
+11. [Built-In Security Rules Catalog](#-built-in-security-rules-catalog)
+12. [Troubleshooting & FAQs](#-troubleshooting--faqs)
+13. [Project Roadmap & Limitations](#-project-roadmap--limitations)
+14. [License](#-license)
 
 ---
 
-## 4. Architecture & Project Structure
+## 🛡️ Project Overview
+
+**ARM Security Analyzer** is an enterprise-grade, standalone Python web application designed to shift cloud infrastructure security left. By analyzing Azure Resource Manager (ARM) Infrastructure-as-Code (IaC) templates **prior to deployment**, it enables security architects, DevOps engineers, and cloud administrators to:
+
+1. **Visualize Infrastructure Topologies**: Automatically infer and render dependencies, networking hierarchies, and data flows using interactive Cytoscape and SVG engines.
+2. **Detect Security Misconfigurations**: Evaluate templates against 23 deterministic static rules inspired by Microsoft's Template Analyzer and the CIS Azure Security Benchmark.
+3. **Correlate Attack Paths with AI**: Identify external entry points and model lateral movement vectors toward sensitive cloud workloads (databases, storage accounts, secrets).
+4. **Remediate with AI Auto-Fix**: Automatically generate a fully patched, valid ARM JSON template, run an in-memory verification rescan, and compare diffs before applying changes.
+5. **Export Comprehensive Audit Reports**: Generate multi-page executive PDF scorecards and machine-readable JSON reports with complete remediation advisories.
+
+> **100% Offline Capability**: The core deterministic engine (parsing, topology visualization, static rule scanning, and reporting) operates entirely offline without requiring Azure credentials, cloud connectivity, or live API tokens.
+
+---
+
+## 📸 Application Visual Tour & Screenshots
+
+### 1. Pre-Deployment Template Ingestion & Homepage
+A clean, responsive SaaS landing page inspired by Microsoft Azure's blue-and-white design system with full Light and Dark theme support. Users can drag and drop ARM JSON templates, review verification criteria, or load instant demonstration architectures (`Insecure Architecture`, `Hardened Architecture`, `Complex Multi-Tier`).
+
+<p align="center">
+  <img src="images/home-page.png" alt="ARM Security Analyzer - Landing Page & Template Ingestion" width="95%" />
+</p>
+
+---
+
+### 2. Interactive Topology Visualizer & Security Findings Workspace
+The central workspace features an anchored **Topology Visualizer** alongside the multi-tab **Security Workspace**. Resources are rendered as official Azure service cards with dynamic live-wire traffic animations and 4 selectable layout algorithms. Selecting any security finding centers, zooms, and pulses the target node on the topology canvas.
+
+<p align="center">
+  <img src="images/dashboard.png" alt="ARM Security Analyzer - Topology Visualizer & Findings Workspace" width="95%" />
+</p>
+
+---
+
+### 3. AI Threat Modeling, Attack Paths & Template Auto-Fix
+The AI Intelligence engine synthesizes structural topology and security findings to discover chained attack paths (e.g., internet-exposed Public IPs traversing open NSGs to sensitive backend databases). The **AI Auto-Fix** pipeline generates a completely patched ARM template, re-scans it deterministically in-memory to verify that vulnerabilities are eliminated without introducing new risks, and provides a side-by-side diff comparison.
+
+<p align="center">
+  <img src="images/ai-analysis.png" alt="ARM Security Analyzer - AI Threat Intelligence & Auto-Fix" width="95%" />
+</p>
+
+---
+
+### 4. Official Brand Identity & Emblems
+High-resolution identity marks and iconography engineered for enterprise Azure cloud security.
+
+<p align="center">
+  <img src="images/arm-logo.png" alt="ARM Security Analyzer Primary Emblem" width="46%" />
+  &nbsp;&nbsp;
+  <img src="images/logo.png" alt="ARM Security Analyzer App Icon" width="34%" />
+</p>
+
+---
+
+## 🚀 Key Capabilities & Features
+
+### 1. Ingestion & Safe ARM Expression Resolution
+*(Preview: [Landing Page & Template Ingestion](images/home-page.png))*
+- **Strict Validation**: Validates JSON syntax, ARM schema declarations (`$schema`), declared parameters, variables, and resources up to 10 MB.
+- **Safe Expression Evaluator (No Python `eval()`)**:
+  - Evaluates `parameters('paramName')` using declared defaults.
+  - Recursively resolves `variables('varName')` with chained dependency tracking.
+  - Evaluates `concat(...)`, `format('{0}-{1}', ...)`, `if(...)`, `equals(...)`, and `resourceId(...)`.
+  - Gracefully tags runtime-dependent Azure expressions (`reference()`, `listKeys()`, `uniqueString(subscription().id)`) as symbolic placeholders without crashing or generating false positives.
+
+### 2. Interactive Topology Visualizer
+*(Preview: [Topology Visualizer & Security Workspace](images/dashboard.png))*
+- **Azure Vector Service Cards**: Generous 230px × 76px nodes styled in Microsoft Azure's design system with high-resolution vector SVG icons for VMs, VNets, Subnets, NSGs, NICs, Public IPs, Storage Accounts, Key Vaults, Web Apps, SQL Databases, Load Balancers, Redis, and Managed Identities.
+- **Dynamic Multi-Layout Engine**:
+  - **Architecture Flow (Default)**: Logical tiered flow (`Ingress / Network` $\to$ `Compute` $\to$ `Data & Storage` $\to$ `Security & Governance`).
+  - **Network Clusters**: Force-directed organic layout grouping resources by topological affinity.
+  - **Dependency Tree**: Strict level-ordered hierarchy reflecting `dependsOn` declarations.
+  - **Grid View**: Compact matrix for rapid inventory inspection.
+- **Live Wire Traffic Flow**: Real-time animated directional packet flow representing internet ingress (orange pulses) and data/secrets flow (emerald/cyan/purple pulses).
+- **Dual Engine Fallback**: Seamless fallback from Cytoscape.js to a hardware-accelerated Native SVG Visualizer for restricted or air-gapped browser environments.
+
+### 3. Deterministic Security Rule Scanner
+- **23 Specialized Security Rules**: Comprehensive coverage across Network Security, Network Exposure, Storage Hardening, App Service Protection, Identity & Access Control (RBAC), Secrets Management, Transit Encryption, and Diagnostic Logging.
+- **Actionable Findings**: Each issue delivers an exact JSON path, severity badge, affected resource ID, risk impact summary, and concrete remediation instructions.
+
+### 4. Dual AI Intelligence Engine
+*(Preview: [AI Threat Modeling & Auto-Fix Dashboard](images/ai-analysis.png))*
+- **Pluggable Architecture**: Seamlessly switch between **Google Gemini API** (cloud) and **Ollama** (100% local/offline) via `.env`.
+- **Correlated Attack-Path Modeling**: Synthesizes the architecture topology and security findings to discover chained attack scenarios (e.g. `Public IP` $\to$ `Unrestricted NSG` $\to$ `VM` $\to$ `Unencrypted Storage Account`).
+- **Contextual Explanations (`AI Explain`)**: Generates instant architectural context, blast radius analysis, and verification steps for any finding.
+- **AI-Powered Template Auto-Fix**:
+  - Returns a **complete corrected ARM template as valid JSON**.
+  - Automatically re-scans the proposed template against all deterministic rules.
+  - Computes exact resolution metrics: **Resolved Findings**, **Remaining Findings**, and **New Vulnerabilities Introduced**.
+  - Non-destructive: Requires explicit user approval before applying changes to the working copy.
+
+### 5. Terminal Debug Output & Auditing
+- Live timestamped ANSI-colored console logs displaying every execution phase in real-time (Upload, Parsing, Scanner, Topology Mapping, AI Failover Cascade, and Report Compilation).
+
+---
+
+## 🏛️ System Architecture
 
 ```text
-E:\AzureProject\v1\azure-security-analyzer\
-├── app.py                      # Application entry point
-├── config.py                   # Development, testing, and production configuration
-├── requirements.txt            # Python dependencies (Flask, Werkzeug, pytest)
-├── README.md                   # System documentation
-├── docs/
-│   └── security-rule-coverage.md # Security coverage matrix vs. template-analyzer
+azure-security-analyzer/
+├── app.py                      # Flask Application Entry Point & Console Banner
+├── config.py                   # Environment Configuration Loader
+├── requirements.txt            # Python Dependencies
+├── .env.example                # Configuration Template
+├── README.md                   # System Documentation
 │
 ├── app/
-│   ├── __init__.py             # Flask application factory (create_app)
+│   ├── __init__.py             # Flask App Factory (create_app)
 │   ├── routes/
-│   │   ├── main.py             # Home page route (/)
-│   │   ├── upload.py           # File upload handler & validation (/upload)
-│   │   └── analysis.py         # Dashboard, API, export, and demo routes (/analysis/<id>)
+│   │   ├── main.py             # Landing page route (/)
+│   │   ├── upload.py           # Template ingestion & validation (/upload)
+│   │   ├── analysis.py         # Dashboard, API, sample loaders (/analysis/<id>)
+│   │   └── ai_analysis.py      # AI Threat Modeling, Explanations & Auto-Fix (/api/ai/*)
 │   ├── services/
-│   │   ├── template_parser.py  # ARM JSON parser & safe expression evaluator
-│   │   ├── dependency_resolver.py # Topology links (dependsOn, NIC, Subnet, NSG, RBAC, etc.)
-│   │   ├── resource_mapper.py  # Cytoscape node/edge mapper & risk scoring
-│   │   ├── security_scanner.py # Central security rule orchestrator
-│   │   └── report_generator.py # Audit metrics and JSON report exporter
+│   │   ├── template_parser.py  # ARM JSON Parser & Safe Expression Evaluator
+│   │   ├── dependency_resolver.py # Topology Link Resolver & Network Association
+│   │   ├── resource_mapper.py  # Cytoscape Graph & Risk Scorecard Generator
+│   │   ├── security_scanner.py # 23-Rule Deterministic Security Audit Engine
+│   │   ├── report_generator.py # Audit Metrics, PDF Scorecard & JSON Export
+│   │   └── ai/
+│   │       ├── provider.py     # Base AI Provider Interface & Error Hierarchy
+│   │       ├── gemini_provider.py # Google Gemini API Provider (with Failover Cascade)
+│   │       ├── ollama_provider.py # Local Ollama REST Provider
+│   │       ├── threat_modeler.py  # Correlated Attack Path Modeling
+│   │       ├── finding_explainer.py # Finding Context & Blast Radius Generator
+│   │       ├── template_fixer.py  # AI Auto-Fix Pipeline & Re-scan Verifier
+│   │       ├── response_validator.py # Anti-Hallucination & Schema Validator
+│   │       └── cache.py        # SHA-256 Hash-Based Inference Cache
 │   ├── security_rules/
-│   │   ├── base_rule.py        # Abstract BaseSecurityRule & SecurityFinding dataclass
+│   │   ├── base_rule.py        # Abstract BaseSecurityRule & SecurityFinding Model
 │   │   ├── network_rules.py    # SEC-NET-001 to SEC-NET-005
 │   │   ├── storage_rules.py    # SEC-STO-001 to SEC-STO-004
 │   │   ├── app_service_rules.py# SEC-APP-001 to SEC-APP-005
@@ -116,120 +175,371 @@ E:\AzureProject\v1\azure-security-analyzer\
 │   │   ├── identity_rules.py   # SEC-ID-001 to SEC-ID-002
 │   │   ├── encryption_rules.py # SEC-ENC-001..003, SEC-AUT-001, SEC-REDIS-001
 │   │   └── logging_rules.py    # SEC-LOG-001
-│   └── static/
-│       ├── css/style.css       # Complete responsive dark theme
-│       └── js/
-│           ├── graph.js        # Topology visualizer, SVG icons, and 4 layout algorithms
-│           ├── findings.js     # Security findings panel & interactive filtering
-│           └── dashboard.js    # Dashboard coordinator & toolbar actions
-└── tests/
-    ├── conftest.py             # Pytest fixtures and test client
-    ├── test_upload.py          # Upload validation tests
-    ├── test_parser.py          # ARM parser & expression evaluator tests
-    ├── test_graph.py           # Dependency resolution & graph generation tests
-    ├── test_dependency_resolver.py # Multi-tier edge resolution & traffic flow tests
-    ├── test_security_rules.py  # Security rule tests (positive and negative)
-    └── test_report.py          # Summary metrics & JSON report export tests
+│   ├── utils/
+│   │   ├── logger.py           # Real-Time Visual Terminal Logger
+│   │   ├── validation.py       # ARM Schema & JSON Validation Utilities
+│   │   └── sanitization.py     # File Path Sanitization & UUID Generators
+│   ├── static/
+│   │   ├── css/style.css       # Enterprise Azure Blue/White Theme & Dark Mode
+│   │   ├── img/
+│   │   │   ├── arm-banner.png  # Header banner asset
+│   │   │   ├── arm-logo.png    # Primary emblem artwork
+│   │   │   └── logo.png        # Navigation logo icon
+│   │   └── js/
+│   │       ├── graph.js        # Topology Visualizer, SVG Icons & 4 Layout Engines
+│   │       ├── findings.js     # Security Findings Filters & Cross-Canvas Highlighting
+│   │       ├── ai_dashboard.js # AI Threat Model, Auto-Fix & Working-Copy Controls
+│   │       └── dashboard.js    # UI Coordinator & Theme State Management
+│   └── templates/
+│       ├── base.html           # Master Layout, Header Navigation & Theme Toggle
+│       ├── index.html          # Hero Section, Drag-and-Drop Uploader & Pre-Loaded Demos
+│       └── dashboard.html      # Dual-Pane Split Workspace (Visualizer + Security Workspace)
+│
+├── images/
+│   ├── arm-banner.png          # High-resolution application banner
+│   ├── arm-logo.png            # Primary emblem artwork
+│   ├── logo.png                # Navigation logo icon
+│   ├── home-page.png           # Landing page & template upload interface
+│   ├── dashboard.png           # Topology visualizer & findings workspace
+│   └── ai-analysis.png         # AI attack paths & auto-fix dashboard
+├── docs/
+│   ├── logo.svg                # Application Vector Emblem & Typography
+│   └── security-rule-coverage.md # Full Coverage Matrix vs. Microsoft Template Analyzer
+└── tests/                      # Automated Regression & Unit Test Suite (77 Tests)
 ```
 
 ---
 
-## 5. Running the Application
+## 💻 Prerequisites & System Requirements
 
-To run the application locally:
+| Component | Minimum Requirement | Recommended |
+| :--- | :--- | :--- |
+| **Operating System** | Windows 10/11, macOS 12+, Ubuntu 20.04+ | Any modern 64-bit OS |
+| **Python** | Python `3.9` | Python `3.11` or `3.12` |
+| **RAM** | 2 GB (Offline Engine) | 8 GB+ (if running Ollama locally) |
+| **Web Browser** | Chrome 90+, Edge 90+, Firefox 88+, Safari 14+ | Modern Chromium or Gecko |
+| **AI Provider (Optional)** | None required for offline static scans | Google Gemini API Key **OR** Local Ollama |
 
+---
+
+## 📦 Installation & Setup
+
+### Step 1: Clone or Open the Repository
+```bash
+cd azure-security-analyzer
+```
+
+### Step 2: Create and Activate a Python Virtual Environment
+
+**On Windows (PowerShell):**
 ```powershell
-cd E:\AzureProject\v1\azure-security-analyzer
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+**On Linux / macOS:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Step 3: Install Required Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+> **Note on Packages**: `requirements.txt` installs `Flask`, `Werkzeug`, `python-dotenv`, `pytest`, `requests`, and `google-genai`. No bulky compiled binaries or C-compilers are needed.
+
+### Step 4: Configure Environment Variables
+Copy the sample configuration file to create your active `.env`:
+```bash
+cp .env.example .env
+```
+*(On Windows PowerShell, use: `Copy-Item .env.example .env`)*
+
+---
+
+## ⚙️ Settings & Configuration Guide (.env)
+
+All application settings, secrets, and provider choices are managed through `.env`. Below is a detailed description of every supported configuration option:
+
+```ini
+# ==============================================================================
+# ARM Security Analyzer - Environment Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Flask Core Settings
+# ------------------------------------------------------------------------------
+FLASK_CONFIG=development
+# Options: development, testing, production
+
+SECRET_KEY=dev-azure-security-analyzer-key-928347
+# Secret key used for session signing and CSRF tokens
+
+MAX_CONTENT_LENGTH=10485760
+# Max upload payload in bytes (10485760 = 10 MB)
+
+PORT=5000
+# Local HTTP server port (Default: 5000)
+
+# ------------------------------------------------------------------------------
+# 2. AI Intelligence Engine (Phase 2)
+# ------------------------------------------------------------------------------
+AI_ENABLED=true
+# Set to 'true' to enable AI Attack Paths, Explanations & Auto-Fix.
+# Set to 'false' to run in 100% offline deterministic mode.
+
+AI_PROVIDER=gemini
+# Active AI provider: 'gemini' (Google Cloud) or 'ollama' (Local Inference)
+
+# ------------------------------------------------------------------------------
+# 3. Google Gemini Settings (Used when AI_PROVIDER=gemini)
+# ------------------------------------------------------------------------------
+GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
+# Your Google AI Studio API key from https://aistudio.google.com/
+
+GEMINI_MODEL=gemini-3.5-flash
+# Primary Gemini model (e.g. gemini-3.5-flash, gemini-2.5-flash, gemini-1.5-flash)
+
+GEMINI_FALLBACK_MODELS=gemini-3-flash-preview,gemini-3.5-flash-lite,gemini-2.5-flash-lite
+# Comma-separated list of fallback models. If the primary model encounters a
+# transient HTTP 503 (high demand) or 404, the system automatically fails over
+# to these models within milliseconds without stalling the browser.
+
+# ------------------------------------------------------------------------------
+# 4. Local Ollama Settings (Used when AI_PROVIDER=ollama)
+# ------------------------------------------------------------------------------
+OLLAMA_BASE_URL=http://localhost:11434
+# Local REST API endpoint of your Ollama daemon
+
+OLLAMA_MODEL=qwen3.5:4b
+# Local model tag (e.g. qwen3.5:4b, mistral, llama3.2, phi3)
+# The system automatically resolves model variants (e.g., matching 'qwen3.5' to 'qwen3.5:4b')
+
+# ------------------------------------------------------------------------------
+# 5. Common AI Resilience & Caching Options
+# ------------------------------------------------------------------------------
+AI_REQUEST_TIMEOUT=60
+# Max seconds to wait for an AI inference response before timing out
+
+AI_MAX_RETRIES=2
+# Number of retry attempts on transient network or server errors
+
+AI_CACHE_ENABLED=true
+# Enable deterministic SHA-256 caching to avoid redundant API calls/costs
+
+AI_CACHE_TTL_SECONDS=3600
+# Cache time-to-live in seconds (3600 = 1 hour)
+
+AI_MAX_CONTEXT_SIZE=32000
+# Context window ceiling in characters to protect against token overflows
+```
+
+---
+
+## 🏃 Running the Application
+
+### Start the Server
+Run the application using Python:
+```powershell
 python app.py
 ```
 
-The web application starts at `http://127.0.0.1:5000`.
+Upon launch, the terminal displays the active system configuration:
+```text
+==============================================================================
+ ARM Security Analyzer — Enterprise Backend Engine v2.0
+ * Deterministic Scanner: 15 Azure CIS Benchmark Security Rules Active
+ * AI Intelligence Engine: Active Provider [GEMINI]
+ * Primary AI Model: gemini-3.5-flash
+ * Automatic Failover Cascade: gemini-3-flash-preview, gemini-3.5-flash-lite, gemini-2.5-flash-lite
+ * Local Server URL: http://127.0.0.1:5000
+==============================================================================
+```
+
+### Access the Dashboard
+Open your web browser and navigate to:
+```text
+http://127.0.0.1:5000
+```
+
+### Testing with Included Templates
+The landing page includes one-click sample templates for immediate evaluation:
+- **Insecure Architecture Demo** (`insecure_template.json`): Contains 27 security misconfigurations (open SSH/RDP, unencrypted storage, missing diagnostic logs, public IPs without NSGs).
+- **Hardened Architecture Demo** (`secure_template.json`): Fully compliant template achieving a **100/100 Posture Health Score**.
+- **Complex Multi-Tier Demo** (`complex_template.json`): Realistic production architecture with VNets, subnets, app gateways, web apps, and databases.
 
 ---
 
-## 6. Running the Automated Test Suite
+## 🤖 AI Provider Setup & Switching Guide
+
+### Option A: Google Gemini API (Cloud)
+
+1. Obtain a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. Open your `.env` file and configure:
+   ```env
+   AI_ENABLED=true
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=AIzaSyYourSecretKeyHere
+   GEMINI_MODEL=gemini-3.5-flash
+   GEMINI_FALLBACK_MODELS=gemini-3-flash-preview,gemini-3.5-flash-lite,gemini-2.5-flash-lite
+   ```
+3. Restart `python app.py`.
+4. **Transient 503 Resilience**: If Google's API returns `HTTP 503 (Model Overloaded)`, the provider automatically cascades to `gemini-3-flash-preview` or `gemini-3.5-flash-lite` within 100ms, ensuring your analysis never fails.
+
+---
+
+### Option B: Ollama (100% Local / Private / Air-Gapped)
+
+For completely private, offline, air-gapped threat modeling where no template data leaves your workstation:
+
+1. Download and install [Ollama](https://ollama.com/).
+2. Start the Ollama background daemon:
+   ```bash
+   ollama serve
+   ```
+3. Pull your preferred model (Qwen 3.5, Mistral, or Llama 3.2):
+   ```bash
+   ollama pull qwen3.5:4b
+   ```
+4. Update your `.env` file:
+   ```env
+   AI_ENABLED=true
+   AI_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://localhost:11434
+   OLLAMA_MODEL=qwen3.5:4b
+   ```
+5. Restart `python app.py`. The application will immediately perform all attack path analyses and template auto-fixes locally via Ollama.
+
+---
+
+## 🧪 Automated Test Suite
+
+The project includes a comprehensive regression test suite comprising **77 automated tests** covering all modules:
+
+```text
+tests/
+├── test_upload.py              # Ingestion limits, JSON validation, traversal defense
+├── test_parser.py              # Expression evaluator, parameter/variable resolution
+├── test_dependency_resolver.py # Topology edges, multi-tier flow associations
+├── test_graph.py               # Cytoscape node/edge mapping, layout calculation
+├── test_security_rules.py      # Positive and negative test cases for all 23 rules
+├── test_report.py              # Metric calculation, scorecard scoring, JSON export
+├── test_threat_modeler.py      # Lateral movement path discovery
+├── test_ai_provider.py         # Gemini & Ollama integration, failover cascade
+├── test_ai_response_validator.py# Grounding check, anti-hallucination verification
+├── test_ai_context_builder.py  # Prompt isolation, secret masking
+├── test_ai_template_fixer.py   # AI template auto-fix, diffing, re-scan verification
+└── test_ai_routes.py           # Flask REST API endpoints and error mappings
+```
+
+### Running the Tests
+Execute `pytest` from the project root:
 
 ```powershell
-cd E:\AzureProject\v1\azure-security-analyzer
 pytest
 ```
 
----
+**Expected Result:**
+```text
+============================== test session starts ==============================
+collected 77 items
 
-## 7. Known Limitations & Static Analysis Boundaries
+tests/test_ai_context_builder.py ....                                     [  5%]
+tests/test_ai_provider.py ...................... .                        [ 35%]
+tests/test_ai_response_validator.py .....                                 [ 41%]
+tests/test_ai_routes.py .........                                         [ 53%]
+tests/test_ai_template_fixer.py .......                                   [ 62%]
+tests/test_dependency_resolver.py ..                                      [ 64%]
+tests/test_graph.py ....                                                  [ 70%]
+tests/test_parser.py .......                                              [ 79%]
+tests/test_report.py ...                                                  [ 83%]
+tests/test_security_rules.py ...                                          [ 87%]
+tests/test_threat_modeler.py ...                                          [ 90%]
+tests/test_upload.py .......                                              [100%]
 
-As an offline, pre-deployment static template analyzer, the engine has defined boundaries:
-
-1. **Unresolved Runtime ARM Expressions**:
-   - ARM expressions requiring live Azure ARM context (such as `reference(...)`, `listKeys(...)`, runtime deployment outputs, or `uniqueString(subscription().id)`) cannot be evaluated without an active Azure connection.
-   - The engine gracefully tags these constructs as `[Symbolic:<expression>]` without failing and records them in analysis warnings banner.
-2. **Linked & External Nested Templates**:
-   - Templates referencing external template URIs via `Microsoft.Resources/deployments` (`properties.templateLink.uri`) require out-of-band retrieval. Inline nested templates (`properties.template`) are fully parsed.
-3. **Runtime & Directory State**:
-   - Security configurations dependent on live tenant state (such as Microsoft Entra ID privileged role assignments, Privileged Identity Management (PIM) policies, Azure Policy initiatives, or cost center quotas) are outside the scope of static Infrastructure-as-Code analysis.
-4. **Offline Air-Gapped Operation**:
-   - The core deterministic application does not require internet connectivity. Vector SVG icons, fallback layouts, Cytoscape/SVG engines, and deterministic security rules function completely offline.
-
----
-
-## 8. Phase 2: Dual AI Provider Threat Intelligence & Attack-Path Analysis
-
-Phase 2 introduces an optional AI-assisted threat intelligence layer supporting both cloud-hosted **Google Gemini API** and 100% local, air-gapped **Ollama Local API**.
-
-### Key AI Features:
-- **Dual AI Provider Architecture**: Switch seamlessly between Google Gemini API (cloud) and Ollama (local private inference) using `AI_PROVIDER=gemini` or `AI_PROVIDER=ollama`. All API keys, endpoints, and model configurations are strictly imported from the `.env` file without hardcoded dummy defaults.
-- **Correlated Attack-Path Modeling**: Identifies entry points (Public IPs, open inbound ports) and maps lateral movement paths toward sensitive target resources (Storage, Redis, SQL Databases, Key Vaults, Privileged Roles).
-- **Contextual Finding Explanations (`⚡ AI Explain`)**: Generates architectural context, blast radius analysis, attacker perspective, and verification steps for any finding.
-- **Remediation Generator & In-Memory Rescan (`🛠️ AI Fix` & `🔬 Dry-Run Rescan`)**: Generates minimal ARM JSON fix snippets and simulates the fix in-memory to verify that the security violation is eliminated before deployment.
-- **Strict Grounding & Anti-Hallucination**: Server-side `AIResponseValidator` validates every cited `resource_id` and `finding_id` against the active session inventory.
-- **Prompt-Injection Defense & Secret Masking**: Template properties are isolated inside untrusted data boundaries with credentials/secrets redacted before context construction.
-- **Deterministic Cache**: Hash-based caching (`AIResponseCache`) prevents redundant inference spending across re-renders.
-
----
-
-### Configuration & Switching Providers
-
-Create or update `.env` in the project root (see `.env.example`):
-
-#### Option A: Google Gemini API (Cloud)
-```env
-AI_ENABLED=true
-AI_PROVIDER=gemini
-
-GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash
-
-AI_REQUEST_TIMEOUT=60
-AI_MAX_RETRIES=2
-AI_CACHE_ENABLED=true
-```
-*Note: If `gemini-3.5-flash` is unreleased or returns 404, the system automatically falls back to the recommended supported model `gemini-2.0-flash`.*
-
-#### Option B: Local Ollama (Private / Air-Gapped)
-```env
-AI_ENABLED=true
-AI_PROVIDER=ollama
-
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3.5
-
-AI_REQUEST_TIMEOUT=60
-AI_MAX_RETRIES=2
-AI_CACHE_ENABLED=true
+======================== 77 passed, 2 warnings in 2.25s =========================
 ```
 
-To run Ollama locally:
-1. Start Ollama: `ollama serve`
-2. Pull your chosen model: `ollama pull qwen3.5` (or `llama3.2`, `mistral`, `phi3`)
-3. Set `AI_PROVIDER=ollama` in `.env`.
+> **Zero Token Consumption**: All AI unit tests utilize mock fixtures and execute 100% offline without consuming live API tokens or requiring an internet connection.
 
 ---
 
-### Automated Testing
+## 📜 Built-In Security Rules Catalog
 
-All automated tests use mocked provider fixtures and do not consume live API quota or require internet access:
-```powershell
-cd E:\AzureProject\v1\azure-security-analyzer
-pytest tests/test_ai_provider.py
-pytest tests/
-```
+The deterministic scanner evaluates 23 unique security rules across 8 cloud security domains:
+
+| Rule ID | Severity | Category | Rule Title & Detection Scope |
+| :--- | :--- | :--- | :--- |
+| **`SEC-NET-001`** | `HIGH` | Network Security | **Unrestricted Inbound SSH (Port 22)**: Flags NSG rules permitting port 22 from `*` or `0.0.0.0/0`. |
+| **`SEC-NET-002`** | `HIGH` | Network Security | **Unrestricted Inbound RDP (Port 3389)**: Flags NSG rules permitting port 3389 from `*` or `0.0.0.0/0`. |
+| **`SEC-NET-003`** | `CRITICAL` | Network Security | **Unrestricted Inbound on All Ports (*)**: Flags NSG rules permitting any protocol/port from `0.0.0.0/0`. |
+| **`SEC-NET-004`** | `HIGH` | Network Exposure | **Public IP Without NSG Protection**: Flags NICs associated with a Public IP lacking a Network Security Group. |
+| **`SEC-NET-005`** | `MEDIUM` | Network Security | **Unrestricted Inbound HTTP (Port 80)**: Flags NSG rules permitting cleartext HTTP traffic from the internet. |
+| **`SEC-STO-001`** | `HIGH` | Storage Security | **Public Blob Access Allowed**: Flags Storage Accounts where `allowBlobPublicAccess` is set to `true`. |
+| **`SEC-STO-002`** | `HIGH` | Storage Security | **Insecure HTTP Traffic Allowed**: Flags Storage Accounts where `supportsHttpsTrafficOnly` is `false`. |
+| **`SEC-STO-003`** | `MEDIUM` | Storage Security | **Weak Minimum TLS Version**: Flags Storage Accounts where `minimumTlsVersion` is below `TLS1_2`. |
+| **`SEC-STO-004`** | `LOW` | Storage Security | **Public Network Access Enabled**: Flags Storage Accounts allowing traffic from unrestricted public networks. |
+| **`SEC-APP-001`** | `HIGH` | App Service | **Remote Debugging Enabled**: Flags Web, API, and Function Apps with `remoteDebuggingEnabled == true`. |
+| **`SEC-APP-002`** | `HIGH` | App Service | **FTPS Enforcement Disabled**: Flags App Services where `ftpsState` allows cleartext FTP (`AllAllowed`). |
+| **`SEC-APP-003`** | `HIGH` | App Service | **Legacy TLS Version (< 1.2)**: Flags App Services with `minTlsVersion` set to `1.0` or `1.1`. |
+| **`SEC-APP-004`** | `MEDIUM` | App Service | **Wildcard CORS Origins (*)**: Flags App Services configuring `cors.allowedOrigins` with wildcard `*`. |
+| **`SEC-APP-005`** | `LOW` | Identity & Access | **Managed Identity Disabled**: Flags Web and Function Apps deployed without a System/User-Assigned Identity. |
+| **`SEC-KV-001`** | `HIGH` | Secrets Management | **Key Vault Soft Delete Disabled**: Flags Key Vaults lacking soft delete or purge protection. |
+| **`SEC-ID-001`** | `HIGH` | Identity & Access | **Subscription-Scope Privileged Role**: Flags role assignments granting `Owner` or `Contributor` at root scope. |
+| **`SEC-ID-002`** | `HIGH` | Identity & Access | **Custom Role Wildcard Permissions (*)**: Flags custom RBAC definitions granting unconstrained `*` actions. |
+| **`SEC-ENC-001`** | `MEDIUM` | Transit Encryption | **App Service HTTPS Disabled**: Flags App Services where `httpsOnly` is `false` or unconfigured. |
+| **`SEC-ENC-002`** | `HIGH` | Encryption at Rest | **SQL Transparent Data Encryption (TDE) Disabled**: Flags Azure SQL Databases without active TDE. |
+| **`SEC-ENC-003`** | `LOW` | Encryption at Rest | **Storage Infrastructure Encryption Disabled**: Flags storage accounts lacking secondary 256-bit AES encryption. |
+| **`SEC-AUT-001`** | `HIGH` | Secrets Management | **Unencrypted Automation Variable**: Flags Automation Account variables created with `isEncrypted == false`. |
+| **`SEC-REDIS-001`**| `HIGH` | Transit Encryption | **Redis Non-SSL Port Enabled**: Flags Azure Cache for Redis instances permitting unencrypted port `6379`. |
+| **`SEC-LOG-001`** | `LOW` | Logging & Monitoring | **Missing Diagnostic Settings**: Flags Key Vaults or NSGs deployed without accompanying diagnostic logging. |
+
+> For a full comparison against Microsoft's 38 rules, see [`docs/security-rule-coverage.md`](docs/security-rule-coverage.md).
+
+---
+
+## 🔧 Troubleshooting & FAQs
+
+### Q1: I encounter `Gemini server error (HTTP 503)` when using Gemini.
+- **Cause**: Google's experimental model endpoints occasionally experience sudden demand spikes.
+- **Resolution**: In your `.env`, ensure `GEMINI_FALLBACK_MODELS` is populated with stable models:
+  ```env
+  GEMINI_MODEL=gemini-3.5-flash
+  GEMINI_FALLBACK_MODELS=gemini-3-flash-preview,gemini-3.5-flash-lite,gemini-2.5-flash-lite
+  ```
+  The engine will automatically switch to the next healthy model within milliseconds.
+
+### Q2: Ollama returns `Model 'qwen3.5' not found`.
+- **Cause**: Ollama model tags often include parameter suffixes (e.g. `qwen3.5:4b` or `qwen3.5:latest`).
+- **Resolution**: Run `ollama list` in your terminal to see the installed tag name, then update `OLLAMA_MODEL` in `.env` to match the exact string:
+  ```env
+  OLLAMA_MODEL=qwen3.5:4b
+  ```
+
+### Q3: Why does my browser show a blank canvas in offline environments?
+- If CDN assets for Cytoscape.js are blocked by corporate proxies or lack internet access, the visualizer automatically switches to the built-in **Native SVG Visualizer** with animated packet flow.
+
+### Q4: Port 5000 is already in use.
+- Set `PORT=5050` in `.env` or run:
+  ```powershell
+  python -c "import os; os.environ['PORT']='5050'; from app import create_app; create_app().run(port=5050)"
+  ```
+
+---
+
+## 🗺️ Project Roadmap & Limitations
+
+- **Runtime Context**: ARM expressions requiring live Azure subscriptions (e.g., `reference(resourceId(...))` or `listKeys(...)`) are evaluated symbolically as `[Symbolic:<expression>]`.
+- **External Linked Templates**: Templates using remote `templateLink.uri` references require local inlining for multi-file analysis.
+- **Planned for v2.1**:
+  - Azure Bicep native transpilation and analysis.
+  - Terraform `.tf` plan cross-compatibility.
+  - CI/CD GitHub Action and Azure DevOps pipeline runner.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**. You are free to use, modify, and distribute this software in commercial and private environments.
