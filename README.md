@@ -79,16 +79,6 @@ The AI Intelligence engine synthesizes structural topology and security findings
   <img src="images/ai-analysis.png" alt="ARM Security Analyzer - AI Threat Intelligence & Auto-Fix" width="95%" />
 </p>
 
----
-
-### 4. Official Brand Identity & Emblems
-High-resolution identity marks and iconography engineered for enterprise Azure cloud security.
-
-<p align="center">
-  <img src="images/arm-logo.png" alt="ARM Security Analyzer Primary Emblem" width="46%" />
-  &nbsp;&nbsp;
-  <img src="images/logo.png" alt="ARM Security Analyzer App Icon" width="34%" />
-</p>
 
 ---
 
